@@ -20,9 +20,15 @@ ENV INIT_ASSETS 1
 
 RUN addgroup -S lighttpd -g ${GID} && adduser -D -S -u ${UID} lighttpd lighttpd && \
     apk add -U --no-cache lighttpd
+RUN apk add python3 py3-pip
+
+COPY requirements.txt /requirements.txt
+RUN pip3 install -r /requirements.txt
+
 
 WORKDIR /www
 
+COPY traefik.py /traefik.py
 COPY lighttpd.conf /lighttpd.conf
 COPY entrypoint.sh /entrypoint.sh
 COPY --from=build-stage --chown=${UID}:${GID} /app/dist /www/
