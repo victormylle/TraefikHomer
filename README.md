@@ -1,153 +1,221 @@
-<h1 align="center">
- <img
-  width="180"
-  alt="Homer's donut"
-  src="https://raw.githubusercontent.com//bastienwirtz/homer/main/public/logo.png">
-    <br/>
-    Homer
-</h1>
+# Traefik Homer for Kubernetes
 
-<h4 align="center">
- A dead simple static <strong>HOM</strong>epage for your serv<strong>ER</strong> to keep your services on hand, from a simple <code>yaml</code> configuration file.
-</h4>
-<p align="center"> 
-  <a href="https://www.buymeacoffee.com/bastien" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-yellow.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-<p>
-<p align="center">
- <strong>
-   <a href="https://homer-demo.netlify.app">Demo</a>
-  •
-  <a href="https://gitter.im/homer-dashboard/community">Chat</a>
-  •
-  <a href="#getting-started">Getting started</a>
- </strong>
-</p>
-<p align="center">
- <a href="https://opensource.org/licenses/Apache-2.0"><img
-  alt="License: Apache 2"
-  src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
-  <a href="https://gitter.im/homer-dashboard/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge"><img
-  alt="Gitter chat"
-  src="https://badges.gitter.im/homer-dashboard/community.svg"></a>
-  <a href="https://github.com/bastienwirtz/homer/releases/latest/download/homer.zip"><img
-  alt="Download homer static build"
-  src="https://img.shields.io/badge/Download-homer.zip-orange"></a>
- <a href="https://twitter.com/acdlite/status/974390255393505280"><img
-  alt="speed-blazing"
-  src="https://img.shields.io/badge/speed-blazing%20%F0%9F%94%A5-red"></a>
- <a href="https://github.com/awesome-selfhosted/awesome-selfhosted"><img
-  alt="Awesome"
-  src="https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg"></a>
-</p>
+Traefik Homer is an application built on top of Homer that automatically displays all the IngressRoutes in the Kubernetes cluster.
+---
+## Prerequisites
 
-<p align="center">
- <img src="https://raw.github.com/bastienwirtz/homer/main/docs/screenshot.png" width="100%">
-</p>
+Before getting started, ensure you have the following prerequisites:
 
-## Table of Contents
+- Kubernetes cluster up and running
+- `kubectl` command-line tool installed and configured
+- Docker registry for hosting your Traefik Homer Docker image
+- Basic understanding of Traefik and Kubernetes concepts
+---
+## Installation
 
-- [Features](#features)
-- [Getting started](#getting-started)
-- [Configuration](docs/configuration.md)
-- [Custom services](docs/customservices.md)
-- [Tips & tricks](docs/tips-and-tricks.md)
-- [Development](docs/development.md)
-- [Troubleshooting](docs/troubleshooting.md)
+I made this to use it myself. Therefor, I pushed the image to my private docker registry. This means if you want to deploy it yourself, you'll need to build it yourself and deploy it to your own private docker registry. (Maybe I'll push it to Dockerhub in the future)
 
-## Features
+### Building the image
+To build and push the image to a docker registry. First make sure you're logged in for the private docker registry (docker login). Because my docker registry is only locally accessible, I deployed it insecurely therefor the following must be done to push the image to the registry.
 
-- [yaml](http://yaml.org/) file configuration
-- Installable (pwa)
-- Search
-- Grouping
-- Theme customization
-- Offline health check
-- keyboard shortcuts:
-  - `/` Start searching.
-  - `Escape` Stop searching.
-  - `Enter` Open the first matching result (respects the bookmark's `_target` property).
-  - `Alt`/`Option` + `Enter` Open the first matching result in a new tab.
 
-## Getting started
-
-Homer is a full static html/js dashboard, based on a simple yaml configuration file. See [documentation](docs/configuration.md) for information about the configuration (`assets/config.yml`) options.
-
-It's meant to be served by an HTTP server, **it will not work if you open the index.html directly over file:// protocol**.
-
-### Using docker
-
-```sh
-docker run -d \
-  -p 8080:8080 \
-  -v </your/local/assets/>:/www/assets \
-  --restart=always \
-  b4bz/homer:latest
+**File: buildkit.toml**
+```toml
+[registry."<REGISTRY-DOMAIN>"]
+insecure = true
 ```
 
-The container will run using a user uid and gid 1000. Add `--user <your-UID>:<your-GID>` to the docker command to adjust it. Make sure this match the ownership of your assets directory.
+Next, we can build and push the image by executing the following command. Make sure you build for the platform you want.
 
-**Environment variables:** 
-
-* **`INIT_ASSETS`** (default: `1`)
-Install example configuration file & assets (favicons, ...) to help you get started.
-
-* **`SUBFOLDER`** (default: `null`)
-If you would like to host Homer in a subfolder, (ex: *http://my-domain/**homer***), set this to the subfolder path (ex `/homer`).
-
-* **`PORT`** (default: `8080`)
-If you would like to change internal port of Homer from default `8080` to your port choice.
-
-
-#### With docker-compose
-
-A [`docker-compose.yml`](docker-compose.yml) file is available as an example. It must be edited to match your needs. You probably want to adjust the port mapping and volume binding (equivalent to `-p` and `-v` arguments).
-
-Then launch the container:
-
-```sh
-cd /path/to/docker-compose.yml/
-docker-compose up -d
+```
+docker buildx create --use --config buildkit.toml
+docker buildx build --push --platform linux/arm64/v8,linux/amd64 \
+                    --tag <REGISTRY-DOMAIN>/traefikhomer:latest .
 ```
 
-### Using the release tarball (prebuilt, ready to use)
+### Deploying on cluster
+I haven't had the time to create a Helm chart for this. I deployed it by using the following config.
+The Role and ClusterRole are needed to fetch all IngressRoutes in the cluster. These are binded to the ServiceAccount that will be attached to the Pod.
 
-Download and extract the latest release (`homer.zip`) from the [release page](https://github.com/bastienwirtz/homer/releases), rename the `assets/config.yml.dist` file to `assets/config.yml`, and put it behind a web server.
-
-```sh
-wget https://github.com/bastienwirtz/homer/releases/latest/download/homer.zip
-unzip homer.zip
-cd homer
-cp assets/config.yml.dist assets/config.yml
-npx serve # or python -m http.server 8010 or apache, nginx ...
+```
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik-homer-service-account
+  namespace: traefik-homer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ingressroute-reader-clusterrole
+rules:
+  - apiGroups: ["traefik.containo.us"]
+    resources: ["ingressroutes"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: read-ingressroutes-clusterrolebinding
+subjects:
+  - kind: ServiceAccount
+    name: traefik-homer-service-account
+    namespace: traefik-homer
+roleRef:
+  kind: ClusterRole
+  name: ingressroute-reader-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: traefik-homer
+  name: ingressroute-reader
+rules:
+- apiGroups: ["traefik.containo.us"]
+  resources: ["ingressroutes"]
+  verbs: ["get", "watch", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-ingressroutes
+  namespace: traefik-homer
+subjects:
+- kind: ServiceAccount
+  name: traefik-homer-service-account
+  namespace: traefik-homer
+roleRef:
+  kind: Role
+  # namespace: traefik-homer
+  name: ingressroute-reader
+  apiGroup: rbac.authorization.k8s.io
 ```
 
-### Using Helm
-
-Thanks to [@djjudas21](https://github.com/djjudas21) [charts](https://github.com/djjudas21/charts/tree/main/charts/homer):
-
-```sh
-helm repo add djjudas21 https://djjudas21.github.io/charts/
-helm repo update djjudas21
-
-# install with all defaults
-helm install homer djjudas21/homer
-
-# install with customisations
-wget https://raw.githubusercontent.com/djjudas21/charts/main/charts/homer/values.yaml
-# edit values.yaml
-helm install homer djjudas21/homer -f values.yaml
+We can also use a ConfigMap that specifies custom pages and services. This is just the Homer configuration (https://github.com/bastienwirtz/homer/blob/main/docs/configuration.md). The IngressRoutes will be dynamically added to these files. An example can be seen below.
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-map
+  namespace: traefik-homer
+data:
+  config.yml: |
+    title: "Optimize"
+    subtitle: "Homer"
+    logo: "assets/logo.png"
+    links:
+      - name: "Home"
+        icon: "fas fa-home"
+        url: "#"
+      - name: "Test"
+        icon: "fas fa-home"
+        url: "#file2"
+    services: []
+  file2.yml: |
+    services: []
 ```
 
-### Build manually
+The deployment and service is then created which has the ConfigMap and ServiceAccount attached to it.
 
-```sh
-# Using yarn (recommended)
-yarn install
-yarn build
-
-# **OR** Using npm
-npm install
-npm run build
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik-homer-deployment
+  namespace: traefik-homer
+spec:
+  selector:
+    matchLabels:
+      app: traefik-homer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: traefik-homer
+    spec:
+      serviceAccountName: traefik-homer-service-account
+      containers:
+      - name: traefik-homer
+        image: <REGISTRY-DOMAIN>/traefikhomer:latest
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /files/config.yml
+          subPath: config.yml
+        env:
+        - name: CONFIGDIR_PATH
+          value: "/files"
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+      - name: config-volume
+        configMap:
+          name: config-map
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-homer-service
+  namespace: traefik-homer
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+  selector:
+    app: traefik-homer
 ```
 
-Then your dashboard is ready to use in the `/dist` directory.
+Lastly, we can apply an IngressRoute so the dashboard is externally available.
+
+```
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-homer-ingress
+  namespace: traefik-homer
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`services.kube.optimize`)
+      kind: Rule
+      services:
+        - name: traefik-homer-service
+          namespace: traefik-homer
+          port: 8080
+```
+---
+## Usage
+To customize the dashboard, the ConfigMap described in the previous section can be modified. There are also some annotations available for the IngressRoutes.
+
+- homer/name
+- homer/page
+- homer/group
+- homer/logo
+
+These annotations add some customization to the services. As default, the namespace and such are used. Every minute the IngressRoutes are fetched again and the Homer dashboard gets updated.
+
+**Example IngressRoute**
+```
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frigate-ingress
+  annotations:
+    homer/name: "Frigate"
+    homer/page: "Smart Home"
+    homer/group: "Security"
+    homer/logo: "https://docs.frigate.video/img/logo.svg"
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`frigate.kube.optimize`)
+      kind: Rule
+      services:
+        - name: frigate
+          namespace: home-assistant
+          port: 5000
+```
