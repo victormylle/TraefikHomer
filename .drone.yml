@@ -1,0 +1,15 @@
+kind: pipeline
+name: default
+
+steps:
+- name: docker
+  image: plugins/docker
+  settings:
+    registry: registry.kube.optimize
+    insecure: true
+    username: admin
+    password:
+      from_secret: registry_password
+    repo: registry.kube.optimize/teslascheduler
+    tags:
+    - latest

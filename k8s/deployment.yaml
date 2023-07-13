@@ -1,0 +1,235 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: traefik-homer-service-account
+  namespace: traefik-homer
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ingressroute-reader-clusterrole
+rules:
+  - apiGroups: ["traefik.containo.us"]
+    resources: ["ingressroutes"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: read-ingressroutes-clusterrolebinding
+subjects:
+  - kind: ServiceAccount
+    name: traefik-homer-service-account
+    namespace: traefik-homer
+roleRef:
+  kind: ClusterRole
+  name: ingressroute-reader-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: traefik-homer
+  name: ingressroute-reader
+rules:
+- apiGroups: ["traefik.containo.us"]
+  resources: ["ingressroutes"]
+  verbs: ["get", "watch", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-ingressroutes
+  namespace: traefik-homer
+subjects:
+- kind: ServiceAccount
+  name: traefik-homer-service-account
+  namespace: traefik-homer
+roleRef:
+  kind: Role
+  # namespace: traefik-homer
+  name: ingressroute-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-map
+  namespace: traefik-homer
+data:
+  config.yml: |
+    title: "Optimize"
+    subtitle: "Homer"
+    # documentTitle: "Welcome" # Customize the browser tab text
+    logo: "https://optimize-it.be/img/optimize-logo-light.png"
+
+    header: false # Set to false to hide the header
+    footer: '<p>Merci Victor <span class="has-text-danger">❤️</span><p>'
+
+    columns: "3" # "auto" or number (must be a factor of 12: 1, 2, 3, 4, 6, 12)
+    connectivityCheck: true # whether you want to display a message when the apps are not accessible anymore (VPN disconnected for example).
+                            # You should set it to true when using an authentication proxy, it also reloads the page when a redirection is detected when checking connectivity.
+
+    # Optional: Proxy / hosting option
+    proxy:
+      useCredentials: false # send cookies & authorization headers when fetching service specific data. Set to `true` if you use an authentication proxy. Can be overrided on service level. 
+
+    # Set the default layout and color scheme
+    defaults:
+      layout: columns # Either 'columns', or 'list'
+      colorTheme: auto # One of 'auto', 'light', or 'dark'
+
+    theme: default # 'default' or one of the themes available in 'src/assets/themes'.
+
+    # Here is the exhaustive list of customization parameters
+    # However all value are optional and will fallback to default if not set.
+    # if you want to change only some of the colors, feel free to remove all unused key.
+    colors:
+      light:
+        highlight-primary: "#3367d6"
+        highlight-secondary: "#4285f4"
+        highlight-hover: "#5a95f5"
+        background: "#f5f5f5"
+        card-background: "#ffffff"
+        text: "#363636"
+        text-header: "#424242"
+        text-title: "#303030"
+        text-subtitle: "#424242"
+        card-shadow: rgba(0, 0, 0, 0.1)
+        link: "#3273dc"
+        link-hover: "#363636"
+        background-image: "assets/your/light/bg.png"
+      dark:
+        highlight-primary: "#3367d6"
+        highlight-secondary: "#4285f4"
+        highlight-hover: "#5a95f5"
+        background: "#131313"
+        card-background: "#2b2b2b"
+        text: "#eaeaea"
+        text-header: "#ffffff"
+        text-title: "#fafafa"
+        text-subtitle: "#f5f5f5"
+        card-shadow: rgba(0, 0, 0, 0.4)
+        link: "#3273dc"
+        link-hover: "#ffdd57"
+        background-image: "assets/your/dark/bg.png"
+
+    links:
+      - name: "Home"
+        icon: "fas fa-home"
+        url: "#"
+      - name: "Servers"
+        icon: "fas fa-server"
+        url: "#Servers"
+      - name: "Smart Home"
+        icon: "fas fa-laptop-house"
+        url: "#Smart_Home"
+
+    # Services
+    # First level array represents a group.
+    # Leave only a "items" key if not using group (group name, icon & tagstyle are optional, section separation will not be displayed).
+    services: []
+  Servers.yml: |
+    services:
+      - name: "Proxmox"
+        icon: "fa-regular fa-circle-nodes"
+        items:
+          - name: "pve4"
+            logo: "https://camo.githubusercontent.com/21439e24ddd0195751bd0cca02c521e041b87de9c995bcef18c9083d4c1d0473/68747470733a2f2f7777772e70726f786d6f782e636f6d2f696d616765732f70726f786d6f782f50726f786d6f782d6c6f676f2d737461636b65642d38343070782e706e67"
+            url: "https://192.168.1.241:8006/"
+          - name: "pve5"
+            logo: "https://camo.githubusercontent.com/21439e24ddd0195751bd0cca02c521e041b87de9c995bcef18c9083d4c1d0473/68747470733a2f2f7777772e70726f786d6f782e636f6d2f696d616765732f70726f786d6f782f50726f786d6f782d6c6f676f2d737461636b65642d38343070782e706e67"
+            url: "https://192.168.1.242:8006/"
+          - name: "Server Victor"
+            logo: "https://camo.githubusercontent.com/21439e24ddd0195751bd0cca02c521e041b87de9c995bcef18c9083d4c1d0473/68747470733a2f2f7777772e70726f786d6f782e636f6d2f696d616765732f70726f786d6f782f50726f786d6f782d6c6f676f2d737461636b65642d38343070782e706e67"
+            url: "https://192.168.1.239:8006"
+      - name: "Storage"
+        icon: "fa-solid fa-database"
+        items:
+          - name: "TrueNAS"
+            logo: "https://avatars.githubusercontent.com/u/53482242?s=280&v=4"
+            url: "http://192.168.1.195"
+          - name: "MSA"
+            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Hewlett_Packard_Enterprise_logo.svg/2560px-Hewlett_Packard_Enterprise_logo.svg.png"
+
+
+  Smart_Home.yml: |
+    services:
+      - name: "Security"
+        icon: "fas fa-video"
+        items:
+          - name: "Parking Camera"
+            logo: "https://www.logo.wine/a/logo/Avigilon/Avigilon-Logo.wine.svg"
+            url: "http://192.168.1.29"
+          
+          - name: "Achterdeur Camera"
+            logo: "https://w7.pngwing.com/pngs/521/162/png-transparent-grandstream-networks-voip-phone-telephone-voice-over-ip-grandstream-gxp2130-grandstream-india-blue-logo-telecommunication.png"
+            url: "http://192.168.1.25"
+
+          - name: "Kotje Camera"
+            logo: "https://seeklogo.com/images/M/mobotix-logo-2EDC80BC8E-seeklogo.com.png"
+            url: "http://192.168.1.26"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik-homer-deployment
+  namespace: traefik-homer
+spec:
+  selector:
+    matchLabels:
+      app: traefik-homer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: traefik-homer
+    spec:
+      serviceAccountName: traefik-homer-service-account
+      containers:
+      - name: traefik-homer
+        image: registry.kube.optimize/traefikhomer:latest
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /files
+        env:
+        - name: CONFIGDIR_PATH
+          value: "/files"
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+      - name: config-volume
+        configMap:
+          name: config-map
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-homer-service
+  namespace: traefik-homer
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+  selector:
+    app: traefik-homer
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-homer-ingress
+  namespace: traefik-homer
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`services.kube.optimize`)
+      kind: Rule
+      services:
+        - name: traefik-homer-service
+          namespace: traefik-homer
+          port: 8080

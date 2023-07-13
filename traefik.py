@@ -1,7 +1,7 @@
 import yaml
 from kubernetes import client, config
 import os
-
+import shutil
 
 class ConfigUpdater:
     def __init__(self, configdir_path, output_dir):
@@ -67,11 +67,14 @@ class ConfigUpdater:
         for ingress_route in self.routes:
             homer_config = self.load_static_config('config.yml')
 
+            protocol = "https" if "websecure" in ingress_route['spec']['entryPoints'] else "http"
+
             new_service = {
                 'name': ingress_route['metadata']['annotations'].get('homer/name', ingress_route['metadata'].get('name')),
-                'url': ingress_route['spec']['routes'][0]['match'].split("`")[1],
+                'url': protocol + "://" + ingress_route['spec']['routes'][0]['match'].split("`")[1],
                 'logo': ingress_route['metadata']['annotations'].get('homer/logo', 'assets/tools/sample-logo.png'),
-                'tag': 'router',
+                'tag': 'IngressRoute',
+                'target': '_blank'
             }
 
             homer_page = ingress_route['metadata']['annotations'].get('homer/page', None)
@@ -127,6 +130,18 @@ class ConfigUpdater:
         for config_file, config in self.updated.items():
             with open(os.path.join(self.output_dir, config_file), 'w') as file:
                 yaml.dump(config, file)
+
+        homer_config = self.load_static_config('config.yml')
+        for link in homer_config.get('links', []):
+            filename = link["url"].replace('#', '') + '.yml'
+            srcfile = os.path.join(self.configdir_path, filename)
+            if filename not in self.updated and os.path.exists(srcfile):
+                # copy the file from configdir_path to output_dir
+                dstfile = os.path.join(self.output_dir, filename)
+
+                shutil.copyfile(srcfile, dstfile)
+                
+
 
 if __name__ == '__main__':
     configdir_path = os.environ.get('CONFIGDIR_PATH', '.')
